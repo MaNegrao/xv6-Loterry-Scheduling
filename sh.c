@@ -183,7 +183,7 @@ fork1(void)
 {
   int pid;
 
-  pid = fork();
+  pid = fork(100); //LSMN
   if(pid == -1)
     panic("fork");
   return pid;

@@ -10,7 +10,11 @@
 int
 sys_fork(void)
 {
-  return fork();
+  int nTickets;   //LSMN
+
+  if(argint(0, &nTickets) < 0)  //LSMN
+    return -1;          //LSMN
+  return fork(nTickets) /* LSMNfork */;
 }
 
 int
