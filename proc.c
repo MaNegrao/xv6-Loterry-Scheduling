@@ -326,7 +326,9 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   int nTickets;
+  int tCount;
   int sorteado = 1;
+  //int sorteado = 1;
   c->proc = 0;
 
   for(;;){
@@ -340,14 +342,16 @@ scheduler(void)
       if(p->state == RUNNABLE)
         nTickets += p->nTickets;
     }
-    sorteado = sorteado + 1;
-
+    // sorteia um
+    sorteado = (((7 ^ sorteado) + sorteado * 13)* 997) % nTickets +1;
+    if(sorteado < 0) sorteado *= -1;
+    tCount = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE){
         continue;
       }else{
-        sorteado -= p->nTickets;
-        if(sorteado > 0)
+        tCount += p->nTickets;
+        if(tCount < nTickets)
           continue;
       }
       // Switch to chosen process.  It is the process's job
