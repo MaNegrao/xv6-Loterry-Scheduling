@@ -32,6 +32,14 @@ cpuid() {
   return mycpu()-cpus;
 }
 
+void statusProc(struct proc *p, int V){
+  if (V){
+    cprintf("Iniciou Id: %d Quantidade Tickets %d\n", p->pid, p->nTickets);
+  }else{
+    cprintf("Terminou Id: %d Quantidade Tickets %d\n", p->pid,p->nTickets);
+  }
+}
+
 // Must be called with interrupts disabled to avoid the caller being
 // rescheduled between reading lapicid and running through the loop.
 struct cpu*
@@ -200,6 +208,15 @@ fork(int nTickets) //LSMN
   np->parent = curproc;
   *np->tf = *curproc->tf;
   np->nTickets = nTickets; //LSMN
+  if(nTickets < 10){
+    np->nTickets = 10; //LSMN
+  }
+  else if(nTickets > 2500){
+    np->nTickets = 2500; //LSMN
+  }
+  else{
+      np->nTickets = nTickets; //LSMN
+  }
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -212,6 +229,8 @@ fork(int nTickets) //LSMN
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
+
+  statusProc(np, 1);
 
   acquire(&ptable.lock);
 
@@ -287,6 +306,7 @@ wait(void)
       havekids = 1;
       if(p->state == ZOMBIE){
         // Found one.
+        statusProc(p, 0);
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;

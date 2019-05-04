@@ -6,7 +6,7 @@
 #define TIMER 123456
 
 int main(){
-    int pid, i, x = 0, fim[FILHOS];
+    int pid, i, x = 0;
 
     for (i = 0; i < FILHOS; i++){
         if(i <10)
@@ -18,7 +18,7 @@ int main(){
 
         if(pid == 0){
             for(i = TIMER; i > 0; i--){ // FOR PARA GASTAR TEMPO
-                if(i % 100 == 0) printf(STDOUT,"A");
+                if(i % 100 == 0) printf(STDOUT,"");
             }
             exit();
         }
@@ -27,12 +27,7 @@ int main(){
     while(1){
         pid = wait();
         if(pid < 0)break;
-        fim[x] = pid;
         x++;
-    }
-
-    for(i = 0; i < FILHOS; i++){
-        printf(STDOUT,"Filho %d Acabou\n", fim[i] );
     }
 
     exit();
