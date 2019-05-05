@@ -8,7 +8,7 @@
 int
 main(void)
 {
-  if(fork(10) > 0) //LSMN
+  if(fork(10) > 0)
     sleep(5);  // Let child exit before parent.
   exit();
 }

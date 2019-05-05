@@ -32,14 +32,6 @@ cpuid() {
   return mycpu()-cpus;
 }
 
-void statusProc(struct proc *p, int V){
-  if (V){
-    cprintf("Iniciou Id: %d Quantidade Tickets %d\n", p->pid, p->nTickets);
-  }else{
-    cprintf("Terminou Id: %d Quantidade Tickets %d\n", p->pid,p->nTickets);
-  }
-}
-
 // Must be called with interrupts disabled to avoid the caller being
 // rescheduled between reading lapicid and running through the loop.
 struct cpu*
@@ -132,7 +124,6 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -146,10 +137,9 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
-
+  p->tickets = DEFAULT_TICKETS;
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
-
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
@@ -186,7 +176,7 @@ growproc(int n)
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
 int
-fork(int nTickets) //LSMN
+fork(int nTickets)  //LSMN
 {
   int i, pid;
   struct proc *np;
@@ -207,16 +197,13 @@ fork(int nTickets) //LSMN
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-  np->nTickets = nTickets; //LSMN
-  if(nTickets < 10){
-    np->nTickets = 10; //LSMN
-  }
-  else if(nTickets > 2500){
-    np->nTickets = 2500; //LSMN
-  }
-  else{
-      np->nTickets = nTickets; //LSMN
-  }
+
+  if(nTickets > MAX_TICKETS)
+    np->tickets = MAX_TICKETS;
+  else if(nTickets < 1)
+    np->tickets = DEFAULT_TICKETS;
+  else
+    np->tickets = nTickets;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -229,8 +216,6 @@ fork(int nTickets) //LSMN
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
-
-  statusProc(np, 1);
 
   acquire(&ptable.lock);
 
@@ -306,7 +291,6 @@ wait(void)
       havekids = 1;
       if(p->state == ZOMBIE){
         // Found one.
-        statusProc(p, 0);
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -340,16 +324,32 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+int calculaTickets(){  //LSMN
+  struct proc *p;
+  int totalTickets = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE)
+      continue;
+    totalTickets = totalTickets + p->tickets;
+  }
+  if(totalTickets == 0) totalTickets ++;
+  return totalTickets;
+}
+
+int random(int seed, int totalTickets){
+  seed = ((seed * 123123 + 321321)%totalTickets)+1;
+  return seed;
+}
+
 void
 scheduler(void)
-{
+{   //LSMN
   struct proc *p;
   struct cpu *c = mycpu();
-  int nTickets;
-  int tCount;
-  int sorteado = 1;
-  //int sorteado = 1;
   c->proc = 0;
+  int totalTickets, sorteado = 123;
+  int count;
 
   for(;;){
     // Enable interrupts on this processor.
@@ -357,21 +357,15 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    nTickets = 0;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state == RUNNABLE)
-        nTickets += p->nTickets;
-    }
-    // sorteia um
-    sorteado = (((7 ^ sorteado) + sorteado * 13)* 997) % nTickets +1;
-    if(sorteado < 0) sorteado *= -1;
-    tCount = 0;
+    totalTickets = calculaTickets();
+    sorteado = random(sorteado, totalTickets);
+    count = sorteado;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE){
         continue;
       }else{
-        tCount += p->nTickets;
-        if(tCount < nTickets)
+        count = count - p->tickets;
+        if(count > 0)
           continue;
       }
       // Switch to chosen process.  It is the process's job

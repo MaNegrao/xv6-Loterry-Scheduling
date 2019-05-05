@@ -8,13 +8,13 @@
 #include "proc.h"
 
 int
-sys_fork(void)
+sys_fork(void)  //LSMN
 {
-  int nTickets;   //LSMN
+  int nTickets;
 
-  if(argint(0, &nTickets) < 0)  //LSMN
-    return -1;          //LSMN
-  return fork(nTickets) /* LSMNfork */;
+  if(argint(0, &nTickets) < 0)
+    return -1;
+  return fork(nTickets);
 }
 
 int
