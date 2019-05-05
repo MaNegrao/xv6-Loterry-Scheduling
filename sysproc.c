@@ -8,11 +8,10 @@
 #include "proc.h"
 
 int
-sys_fork(void)  //LSMN
+sys_fork(void)
 {
   int nTickets;
-
-  if(argint(0, &nTickets) < 0)
+  if(argint(0, &nTickets))
     return -1;
   return fork(nTickets);
 }

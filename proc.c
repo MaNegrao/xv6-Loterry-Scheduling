@@ -6,7 +6,8 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
+#define MAX_TICKETS 100
+#define DEFAULT_TICKETS 5
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -124,6 +125,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -137,9 +139,10 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
-  p->tickets = DEFAULT_TICKETS;
+
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
   // writes to be visible, and the lock is also needed
@@ -176,7 +179,7 @@ growproc(int n)
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
 int
-fork(int nTickets)  //LSMN
+fork(int nTickets)
 {
   int i, pid;
   struct proc *np;
@@ -198,13 +201,6 @@ fork(int nTickets)  //LSMN
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
-  if(nTickets > MAX_TICKETS)
-    np->tickets = MAX_TICKETS;
-  else if(nTickets < 1)
-    np->tickets = DEFAULT_TICKETS;
-  else
-    np->tickets = nTickets;
-
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -212,6 +208,13 @@ fork(int nTickets)  //LSMN
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
   np->cwd = idup(curproc->cwd);
+
+  if(nTickets > MAX_TICKETS)
+    np->tickets = MAX_TICKETS;
+  else if(nTickets < 1)
+    np->tickets = DEFAULT_TICKETS;
+  else
+    np->tickets = nTickets;
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
@@ -324,32 +327,13 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-
-int calculaTickets(){  //LSMN
-  struct proc *p;
-  int totalTickets = 0;
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state != RUNNABLE)
-      continue;
-    totalTickets = totalTickets + p->tickets;
-  }
-  if(totalTickets == 0) totalTickets ++;
-  return totalTickets;
-}
-
-int random(int seed, int totalTickets){
-  seed = ((seed * 123123 + 321321)%totalTickets)+1;
-  return seed;
-}
-
 void
 scheduler(void)
-{   //LSMN
+{
+  int totalTickets, sorteado = 1;
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  int totalTickets, sorteado = 123;
-  int count;
 
   for(;;){
     // Enable interrupts on this processor.
@@ -357,17 +341,26 @@ scheduler(void)
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    totalTickets = calculaTickets();
-    sorteado = random(sorteado, totalTickets);
-    count = sorteado;
+    totalTickets = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE){
+      if(p->state != RUNNABLE)
         continue;
-      }else{
-        count = count - p->tickets;
-        if(count > 0)
+      totalTickets = totalTickets + p->tickets;
+    }
+    if(totalTickets == 0) totalTickets++;
+
+    sorteado = ((sorteado * 123123 + 321321)%totalTickets);
+    totalTickets = sorteado;
+
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
+      else{
+        totalTickets = totalTickets - p->tickets;
+        if(totalTickets > 0)
           continue;
       }
+
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.

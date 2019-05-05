@@ -1,14 +1,12 @@
-//Utilizado para testes do escalonador por loteria
+#include "types.h"
+#include "user.h"
 
-#include "types.h"      //necessaria para as variaveis
-#include "user.h"       //função para print e chamada do sistema
-
-#define NFILHOS 5
+#define NFILHOS 11
 
 int main(){
     int pid, i, n;
 
-    for (i = 0, n = 100; i < NFILHOS; i++, n-=20){
+    for (i = 0, n = 100; i < NFILHOS; i++, n-=10){
         pid = fork(n);
         if(pid == 0){
             for(i = 0; i < 99999999; i++){
@@ -23,8 +21,7 @@ int main(){
       if(pid < 0) break;
     }
     printf(1, "___________________________");
-
-    for (i = 0, n = 0; i > NFILHOS; i++, n+=20){
+    for (i = 0, n = 0; i < NFILHOS; i++, n+=10){
         pid = fork(n);
         if(pid == 0){
             for(i = 0; i < 99999999; i++){
