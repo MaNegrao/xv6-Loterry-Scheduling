@@ -1,0 +1,23 @@
+﻿Matheus Dias Negrão
+Nicolas Koling Ribas
+1711100026
+1711100002
+
+
+
+
+T1 - Escalonador por loteria - xv6 - Instruções de Execução
+
+
+O código foi colocado na rede, por conta do tamanho do arquivo, para baixá-lo é necessário executar na linda comando a seguinte linha:
+        git clone https://github.com/nicolaskribas/xv6-public.git;
+
+
+Os passos seguintes são para emular o sistema operacional através do qemu e também como instalar o mesmo:
+Instalação qemu - sudo apt-get install libc6-dev:i386 e sudo apt-get install qemu;        
+Dentro da pasta clonada execute: make e make qemu-nox, um seguido do outro;
+
+
+        Já dentro do terminal do xv6, para executar o arquivo de teste é necessário executar as seguinte linha: 
+        Chamada do arquivo de teste - testLS
+        Para mostrar a quantidade de tickets e de CPU dada para cada filho - Ctrl + P
