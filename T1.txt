@@ -19,5 +19,5 @@ Dentro da pasta clonada execute: make e make qemu-nox, um seguido do outro;
 
 
         Já dentro do terminal do xv6, para executar o arquivo de teste é necessário executar as seguinte linha: 
-        Chamada do arquivo de teste - testLS
-        Para mostrar a quantidade de tickets e de CPU dada para cada filho - Ctrl + P
+        Chamada dos arquivos de teste - testLS1 e testLS2
+        Para visualizar a quantidade de tickets e de CPU dada para cada filho durante a execução dos testes, principalmente o testLS2- Ctrl + P
